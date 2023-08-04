@@ -1,0 +1,22 @@
+name: Copy Labels
+on:
+  label:
+    types:
+      - created
+
+jobs:
+  copy_labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Repository
+        uses: actions/checkout@v2
+
+      - name: Copy Label to Destination Repository
+        env:
+          DEST_REPO: "DEST_OWNER/DEST_REPO"
+        run: |
+          # Get the label name and color
+          LABEL_NAME=$(jq -r '.label.name' "$GITHUB_EVENT_PATH")
+          LABEL_COLOR=$(jq -r '.label.color' "$GITHUB_EVENT_PATH")
+
+          echo label name is: ${LABEL_NAME}
