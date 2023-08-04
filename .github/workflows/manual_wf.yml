@@ -1,0 +1,92 @@
+name: Manual Sync of labels
+on:
+  workflow_dispatch
+
+jobs:
+  get_repos:
+    name: Get all repositories
+    runs-on: ubuntu-latest
+    outputs:
+      repos: ${{ steps.get_repo.outputs.repositories }}
+    steps:
+      - name: Get current repositories
+        id: get_repo
+        env:
+          GH_TOKEN: ${{ github.TOKEN }}
+          MAX_REPO: 3
+        run: |
+          repo_list=$(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived -L ${MAX_REPO} --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"' | jq -cnR '[inputs | select(length>0)]')
+          echo "repositories=${repo_list}" >> $GITHUB_OUTPUT
+
+  get_labels:
+    name: Get all labels
+    runs-on: ubuntu-latest
+    outputs:
+      labels: ${{ steps.get_labels.outputs.labels }}
+    steps:
+      - id: get_labels
+        env:
+          GH_TOKEN: ${{ github.TOKEN }}
+          MAX_LABEL: 3
+        run: |
+          label_list=[$(gh label list -R neurobagel/planning -L 3 --json name | jq '.[].name' | jq -s -r @csv)]
+          echo labels: ${label_list}
+          echo "labels=${label_list}" >> $GITHUB_OUTPUT
+
+  sync_labels:
+    name: Process all the labels
+    runs-on: ubuntu-latest
+    needs: [get_labels, get_repos]
+    env:
+      GH_TOKEN: ${{ secrets.LAB_PAT }}
+    strategy:
+      matrix:
+        label: ${{fromJSON(needs.get_labels.outputs.labels)}}
+        repo: ${{fromJSON(needs.get_repos.outputs.repos)}}
+    steps:
+      - name: Detect label
+        id: label_missing
+        continue-on-error: true
+        run: |
+          gh label list -R "${{ matrix.repo }}" -L 100 | grep -wq "${{ matrix.label }}"
+      - name: read label details
+        id: read_label
+        run: |
+            # TODO replace hardcoded owner and repo with variables. But note that GITHUB_REPOSITORY
+            # in https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+            # contains both owner and repo: neurobagel/planning, so we'd have to split it first
+            label_description="$(gh api graphql -F owner="neurobagel" -F name="planning" -F label="${{matrix.label}}" -f query='
+              query($owner: String!, $name: String!, $label: String!) {
+                repository(owner: $owner, name: $name) {
+                  label(name: $label) {
+                    description
+                  }
+                }
+              }
+            ' --jq '.data.repository.label.description')"
+
+            label_color="$(gh api graphql -F owner="neurobagel" -F name="planning" -F label="${{matrix.label}}" -f query='
+              query($owner: String!, $name: String!, $label: String!) {
+                repository(owner: $owner, name: $name) {
+                  label(name: $label) {
+                    color
+                  }
+                }
+              }
+            ' --jq '.data.repository.label.color')"
+
+            echo "description=${label_description}" >> $GITHUB_OUTPUT
+            echo "color=${label_color}" >> $GITHUB_OUTPUT
+            
+      - name: create label
+        if: steps.label_missing.outcome == 'failure'
+        run: |
+          echo I am creating label: "${{matrix.label}}" for ${{matrix.repo}}
+          gh label create -R "${{matrix.repo}}" "${{matrix.label}}" --color "${{ steps.read_label.outputs.color }}" --description "${{ steps.read_label.outputs.description }}"
+      - name: update label
+        if: steps.label_missing.outcome == 'success'
+        run: |
+          echo I am updating label: "${{matrix.label}}" for ${{matrix.repo}}
+          gh label edit -R "${{ matrix.repo}}" "${matrix.label}" --color "${{ steps.read_label.outputs.color }}" --description "${{ steps.read_label.outputs.description }}"
+        
+        

@@ -1,0 +1,96 @@
+name: repo label sync handler
+on:
+  workflow_call:
+    inputs:
+      repo:
+        required: true
+        type: string
+      rename:
+        required: true
+        type: boolean
+
+jobs:
+  check_label:
+    runs-on: ubuntu-latest
+    name: Label missing
+    outputs:
+      concl_exist: ${{ steps.missing.outcome }}
+    steps:
+      - name: exit 1 if label does not exist
+        id: missing
+        env:
+          GH_TOKEN: ${{ secrets.LAB_PAT }}
+        run: |
+          gh label list -R "${{ inputs.repo }}" -L 100 | grep -wq "${{ github.event.label.name }}"
+        continue-on-error: true
+
+  created:
+    runs-on: ubuntu-latest
+    needs: [check_label]
+    if: github.event.action == 'created'
+    env:
+        GH_TOKEN: ${{ secrets.LAB_PAT }}
+        LABEL_NAME: ${{ github.event.label.name }}
+        LABEL_COLOR: ${{ github.event.label.color }}
+        LABEL_DESCRIPTION: ${{ github.event.label.description }}
+    steps:
+      - if: needs.check_label.outputs.concl_exist == 'success'
+        run: |
+          echo Cannot create label "${LABEL_NAME}" in "${{ inputs.repo }}" because it already exists
+      - if: needs.check_label.outputs.concl_exist == 'failure'
+        run: |
+          echo Creating Label ${LABEL_NAME} in ${{ inputs.repo}}
+          gh label create -R "${{ inputs.repo}}" "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+          
+
+  edited:
+    runs-on: ubuntu-latest
+    needs: [check_label]
+    if: github.event.action == 'edited'
+    env:
+        GH_TOKEN: ${{ secrets.LAB_PAT }}
+        LABEL_NAME: ${{ github.event.label.name }}
+        LABEL_COLOR: ${{ github.event.label.color }}
+        LABEL_DESCRIPTION: ${{ github.event.label.description }}
+    steps:
+      - name: label exists
+        if: needs.check_label.outputs.concl_exist == 'success'
+        run: |
+          echo Label exists
+          echo rename: ${{ inputs.rename }}
+          if [ ${{ inputs.rename }}  == 'true' ];then
+            echo Label was renamed
+            echo But the label ${LABEL_NAME} already exists in "${{ inputs.repo}}"!
+            echo That is a problem! Not doing anything right now.
+          else
+            echo Label was not renamed
+            echo Updating the label ${{ github.event.label.name }} in "${{ inputs.repo}}" 
+            gh label edit -R "${{ inputs.repo}}" "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+          fi
+      - name: label does not exist
+        if: needs.check_label.outputs.concl_exist == 'failure'
+        run: |
+          if [ ${{ inputs.rename }} == 'true' ];then
+            # TODO: make sure the old label name exists, otherwise just create the label.
+            echo Label was renamed
+            echo Renaming "${{ github.event.changes.name.from }}" to "${LABEL_NAME}" in "${{ inputs.repo}}"
+            gh label edit -R "${{ inputs.repo}}" "${{ github.event.changes.name.from }}" --name "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+          
+          else
+            echo Label was not renamed
+            echo Creating Label ${LABEL_NAME} in ${{ inputs.repo}}
+            gh label create -R "${{ inputs.repo}}" "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+          fi
+
+  deleted:
+    runs-on: ubuntu-latest
+    needs: [check_label]
+    if: github.event.action == 'deleted'
+    steps:
+      - run: |
+          echo action ${{ github.event.action }}
+          echo missing ${{ needs.check_label.outputs.concl_exist }}
+        
+
+          
+

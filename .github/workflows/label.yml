@@ -1,8 +1,6 @@
 name: Copy Labels
 on:
-  label:
-    types:
-      - created
+  workflow_dispatch:
 
 jobs:
   copy_labels:
@@ -13,10 +11,28 @@ jobs:
 
       - name: Copy Label to Destination Repository
         env:
-          DEST_REPO: "DEST_OWNER/DEST_REPO"
+          GH_TOKEN: ${{ secrets.LAB_PAT }}
         run: |
-          # Get the label name and color
+          # Get the label name, color, and description
           LABEL_NAME=$(jq -r '.label.name' "$GITHUB_EVENT_PATH")
           LABEL_COLOR=$(jq -r '.label.color' "$GITHUB_EVENT_PATH")
+          LABEL_DESCRIPTION=$(jq -r '.label.description' "$GITHUB_EVENT_PATH")
 
-          echo label name is: ${LABEL_NAME}
+          # Get a list of repositories and run the following for each of them
+          for repo in $(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"')
+          do
+
+            # Check if the label already exists in the destination repository
+            # Need to escape the nonzero exit status from grep when no match is found because it would cause 
+            # GH actions to stop here. We also need to get at least as many labels as already exist.
+            # 100 should be a big enough number for now.
+            LABEL_MATCH=$(gh label list -R "$repo" -L 100 | grep -w "${LABEL_NAME}" || :; )
+  
+            # If the label doesn't exist, create it in the destination repository
+            if [ -z "$LABEL_MATCH" ]; then
+              # gh label create -R "${repo}" "$LABEL_NAME" --color "$LABEL_COLOR" --description "$LABEL_DESCRIPTION"
+              echo "Label '$LABEL_NAME' created in the destination repository ${repo}."
+            else
+              echo "Label '$LABEL_NAME' already exists in the destination repository ${repo}. No action needed."
+            fi
+          done

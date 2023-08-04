@@ -1,0 +1,59 @@
+name: Label sync workflow
+on:
+  label:
+    types: [edited, created, deleted]
+
+jobs:
+  check_rename:
+    runs-on: ubuntu-latest
+    name: Was label renamed?
+    outputs:
+      renamed: ${{ steps.renamed.outcome }}
+    steps:
+      - name: suceeds if label was renamed
+        id: renamed
+        continue-on-error: true
+        run: |
+          # See https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads?actionType=edited#label
+          if [ -n "${{ github.event.changes.name.from }}" ];then
+            echo Label ${{ github.event.label.name }} has been renamed
+            exit 0
+          else
+            echo Label ${{ github.event.label.name }} has not been renamed
+            exit 1
+          fi
+  get_repos:
+    name: Get all repositories
+    runs-on: ubuntu-latest
+    outputs:
+      repos: ${{ steps.get_repo.outputs.repositories }}
+    steps:
+      - name: Get current repositories
+        id: get_repo
+        env:
+          GH_TOKEN: ${{ github.TOKEN }}
+          MAX_REPO: 50
+        run: |
+          repo_list=$(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived -L ${MAX_REPO} --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"' | jq -cnR '[inputs | select(length>0)]')
+          echo "repositories=${repo_list}" >> $GITHUB_OUTPUT
+  
+  sync:
+    uses: neurobagel/planning/.github/workflows/repo_ruw.yml@main
+    needs: [check_rename, get_repos]
+    secrets: inherit
+    strategy:
+      matrix: 
+        repo: ${{fromJSON(needs.get_repos.outputs.repos)}}
+    with:
+      repo: ${{ matrix.repo }}
+      rename: ${{ needs.check_rename.outputs.renamed == 'success'  }}
+      
+
+  debug:
+    runs-on: ubuntu-latest
+    needs: check_rename
+    steps:
+      - run: |
+          echo renamed: ${{ needs.check_rename.outputs.renamed }}
+          echo bool: ${{ needs.check_rename.outputs.renamed == 'success'  }}
+        
