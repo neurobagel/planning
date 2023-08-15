@@ -12,7 +12,7 @@ jobs:
       - name: Get current repositories
         id: get_repo
         env:
-          GH_TOKEN: ${{ github.TOKEN }}
+          GH_TOKEN: ${{ secrets.LAB_PAT }}
           MAX_REPO: 50
         run: |
           repo_list=$(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived -L ${MAX_REPO} --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"' | jq -cnR '[inputs | select(length>0)]')
@@ -27,9 +27,9 @@ jobs:
       - id: get_labels
         env:
           GH_TOKEN: ${{ github.TOKEN }}
-          MAX_LABEL: 3
+          MAX_LABEL: 100
         run: |
-          label_list=[$(gh label list -R neurobagel/planning -L 3 --json name | jq '.[].name' | jq -s -r @csv)]
+          label_list=[$(gh label list -R neurobagel/planning -L ${MAX_LABEL} --json name | jq '.[].name' | jq -s -r @csv)]
           echo labels: ${label_list}
           echo "labels=${label_list}" >> $GITHUB_OUTPUT
 
