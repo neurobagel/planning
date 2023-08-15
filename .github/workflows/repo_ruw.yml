@@ -21,7 +21,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.LAB_PAT }}
         run: |
-          gh label list -R "${{ inputs.repo }}" -L 100 | grep -wq "${{ github.event.label.name }}"
+          gh label list -R "${{ inputs.repo }}" -L 100 --json 'name' | jq -r '.[].name' | grep -wq "^${{ github.event.label.name }}"
         continue-on-error: true
 
   created:
