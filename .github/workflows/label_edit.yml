@@ -6,7 +6,7 @@ on:
 jobs:
   check_rename:
     runs-on: ubuntu-latest
-    name: Was "${{ github.event.label.name }}" renamed?
+    name: Was label "${{ github.event.label.name }}" renamed?
     outputs:
       renamed: ${{ steps.renamed.outcome }}
     steps:
@@ -39,7 +39,7 @@ jobs:
   
   sync:
     uses: neurobagel/planning/.github/workflows/repo_ruw.yml@main
-    name: ${{ matrix.repo }} -< ${{ github.event.label.name }} (${{github.event.action}})
+    name: ${{ matrix.repo }} <- ${{ github.event.label.name }} (${{github.event.action}})
     needs: [check_rename, get_repos]
     secrets: inherit
     strategy:
