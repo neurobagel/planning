@@ -1,4 +1,4 @@
-name: Label sync workflow
+name: Label ${{ github.event.label.name }} was ${{github.event.action]}
 on:
   label:
     types: [edited, created, deleted]
