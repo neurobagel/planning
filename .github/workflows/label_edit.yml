@@ -1,4 +1,4 @@
-name: Label ${{ github.event.label.name }} was ${{github.event.action]}
+name: Sync Label
 on:
   label:
     types: [edited, created, deleted]
@@ -39,6 +39,7 @@ jobs:
   
   sync:
     uses: neurobagel/planning/.github/workflows/repo_ruw.yml@main
+    name: ${{ github.event.label.name }} was ${{github.event.action]}
     needs: [check_rename, get_repos]
     secrets: inherit
     strategy:
