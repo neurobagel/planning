@@ -39,7 +39,7 @@ jobs:
   
   sync:
     uses: neurobagel/planning/.github/workflows/repo_ruw.yml@main
-    name: ${{ github.event.label.name }} was ${{github.event.action}}
+    name: ${{ github.event.label.name }} (${{github.event.action}}) -> ${{ matrix.repo }}
     needs: [check_rename, get_repos]
     secrets: inherit
     strategy:
