@@ -1,3 +1,19 @@
+# This is a reusable workflow that needs to be invoked
+# by another github workflow (see https://docs.github.com/en/actions/using-workflows/reusing-workflows#calling-a-reusable-workflow)
+#
+# When the workflow is invoked it inherits the github context (https://docs.github.com/en/actions/learn-github-actions/contexts#github-context)
+# of the calling workflow (see https://docs.github.com/en/actions/using-workflows/reusing-workflows#overview)
+# This reusable workflow expects to have been called by a workflow
+# that listens to label event hooks: https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#label
+# and relies on those payloads to be available in the inherited github context
+#
+# The workflow also requires two inputs:
+# 1. The name of the repo that the label should be applied to
+# 2. Whether the event got triggered by an edit that renamed the label.
+#    Github doesn't provide an explicit hook for edit events that rename a label.
+#    Because a rename requires additional steps, we check for rename events in
+#    the calling workflow and pass this information as input here.
+
 name: Apply label change
 on:
   workflow_call:
@@ -11,6 +27,17 @@ on:
 
 jobs:
   check_label:
+    # Check if the (new) label name passed by the calling workflow
+    # already exists in the target repo.
+    # This check is important particularly for a rename action, because
+    # we don't want to rename a label to a name that already exists.
+    #
+    # This makes use of the github steps context outcome attribute: https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context
+    # outcome will be 
+    #   - "success" if the exit code was 0
+    #   - "failure" if the exit code was not 0
+    # This is determined before the job is forced to "succeed" by continue-on-error: true
+    # in order to not crash the workflow.
     runs-on: ubuntu-latest
     name: Label missing
     outputs:
@@ -20,11 +47,17 @@ jobs:
         id: missing
         env:
           GH_TOKEN: ${{ secrets.LAB_PAT }}
+        # This step makes use of the fact that grep returns a non-zero exit code when no match is found
+        # see https://www.gnu.org/software/grep/manual/html_node/Exit-Status.html
+        # we use the exit code to encode whether the label exists (see above)
         run: |
           gh label list -R "${{ inputs.repo }}" -L 100 --json 'name' | jq -r '.[].name' | grep -wq "^${{ github.event.label.name }}"
         continue-on-error: true
 
   created:
+    # This job only runs if the event got triggered by a create event hook.
+    # We check that the new label does not exist yet in the target repo,
+    # and if it doesn't, we create a new label.
     runs-on: ubuntu-latest
     needs: [check_label]
     if: github.event.action == 'created'
@@ -44,6 +77,18 @@ jobs:
           
 
   edited:
+    # This job only runs if the event got triggered by an edit on the label.
+    # It relies on two checks: 
+    # 1. Whether the label edit event also renamed the label.
+    # 2. Whether the new label name exists in the target repo.
+    #
+    # If the label was renamed, we check ensure that
+    #   - the old label name exists in the target repo (accessed from the github context: github.event.changes.name.from)
+    #   - the new label name does not exist.
+    # and then rename the label and apply any other changes.
+    #
+    # If the label was not renamed and the label name does not yet exist in the target repo,
+    # then we create a new label. Otherwise we edit the existing label.
     runs-on: ubuntu-latest
     needs: [check_label]
     if: github.event.action == 'edited'
@@ -58,6 +103,9 @@ jobs:
         run: |
           echo Label exists
           echo rename: ${{ inputs.rename }}
+          # TODO check if we actually have to treat the boolean as string here
+          # See https://docs.github.com/en/actions/learn-github-actions/contexts#inputs-context
+          # See https://github.com/actions/runner/issues/1483
           if [ ${{ inputs.rename }}  == 'true' ];then
             echo Label was renamed
             echo But the label ${LABEL_NAME} already exists in "${{ inputs.repo}}"!
@@ -83,6 +131,11 @@ jobs:
           fi
 
   deleted:
+    # This job only runs if the event got triggered by a delete on the label.
+    # The job currently doesn't do anything - because deleting labels may
+    # require manual interaction to reassign the issues that were using the label.
+    #
+    # TODO make the job do something or remove it
     runs-on: ubuntu-latest
     needs: [check_label]
     if: github.event.action == 'deleted'

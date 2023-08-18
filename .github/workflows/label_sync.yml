@@ -26,6 +26,14 @@ jobs:
     outputs:
       renamed: ${{ steps.renamed.outcome }}
     steps:
+      # Check if the label was renamed
+      #
+      # This makes use of the github steps context outcome attribute: https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context
+      # outcome will be 
+      #   - "success" if the exit code was 0 - i.e. the label was renamed
+      #   - "failure" if the exit code was not 0 - i.e. the label was not renamed
+      # This is determined before the job is forced to "succeed" by continue-on-error: true
+      # in order to not crash the workflow.
       - name: suceeds if label was renamed
         id: renamed
         continue-on-error: true
@@ -54,6 +62,8 @@ jobs:
           echo "repositories=${repo_list}" >> $GITHUB_OUTPUT
   
   sync:
+    # This job creates a job matrix using the input computed by the two previous jobs
+    # and then launches the label_apply_change job for each repo.
     uses: neurobagel/planning/.github/workflows/label_apply_change.yml@main
     name: ${{ matrix.repo }} <- ${{ github.event.label.name }} (${{github.event.action}})
     needs: [check_rename, get_repos]
