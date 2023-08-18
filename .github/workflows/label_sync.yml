@@ -1,3 +1,19 @@
+# When a label in the neurobagel/planning repo is changed
+# this workflow will push the change to all repos owned by
+# the neurobagel organization.
+#
+# This workflow has 3 stages:
+# 1. Check if the label has been renamed. 
+#    Github does not provide an explicit hook for 
+#    edit events that rename a label. Because syncing
+#    a renamed label requires additional steps, we have
+#    to check if the label has been renamed using the check_rename job.
+# 2. Identify all repos owned by neurobagel with the 
+#    get_repos job.
+# 3. Use a job matrix to call the label_apply_change
+#    job for each repository owned by neurobagel and 
+#    provide provide the rename status as a input.
+
 name: Sync Label
 on:
   label:
@@ -38,7 +54,7 @@ jobs:
           echo "repositories=${repo_list}" >> $GITHUB_OUTPUT
   
   sync:
-    uses: neurobagel/planning/.github/workflows/repo_ruw.yml@main
+    uses: neurobagel/planning/.github/workflows/label_apply_change.yml@main
     name: ${{ matrix.repo }} <- ${{ github.event.label.name }} (${{github.event.action}})
     needs: [check_rename, get_repos]
     secrets: inherit
