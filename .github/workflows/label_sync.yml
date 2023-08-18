@@ -64,13 +64,3 @@ jobs:
     with:
       repo: ${{ matrix.repo }}
       rename: ${{ needs.check_rename.outputs.renamed == 'success'  }}
-      
-
-  debug:
-    runs-on: ubuntu-latest
-    needs: check_rename
-    steps:
-      - run: |
-          echo renamed: ${{ needs.check_rename.outputs.renamed }}
-          echo bool: ${{ needs.check_rename.outputs.renamed == 'success'  }}
-        
