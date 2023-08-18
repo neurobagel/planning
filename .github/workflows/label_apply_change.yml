@@ -1,4 +1,4 @@
-name: repo label sync handler
+name: Apply label change
 on:
   workflow_call:
     inputs:
