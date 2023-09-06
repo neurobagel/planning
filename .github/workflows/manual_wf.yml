@@ -60,15 +60,16 @@ jobs:
       - name: sync label
         env:
           MAX_REPO: 100
-        continue-on-error: true
         run: |
           for repo in $(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived -L ${MAX_REPO} --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"');
           do
-
-            echo Syncing label ${{matrix.label}} to ${repo}!
-            gh label list -R "${repo}" -L 100 | grep -wq "${{ matrix.label }}"
+          
+            echo -e "\nSyncing label ${{matrix.label}} to ${repo}!"
             
-            if [ $? -ne 0 ]; then
+            # We escape grep's nonzero exit status here
+            out=$(gh label list -R "${repo}" -L 100 | grep -w "${{ matrix.label }}" || echo "")
+            
+            if [ -z "${out}" ]; then
               # Label missing
               echo I am creating label: "${{matrix.label}}" for ${repo}
               gh label create -R "${repo}" "${{matrix.label}}" --color "${{ steps.read_label.outputs.color }}" --description "${{ steps.read_label.outputs.description }}"
