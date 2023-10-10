@@ -15,19 +15,12 @@ body:
     validations:
       required: false
 
-  - type: input
-    attributes:
-      label: Part of goal
-      description: "Milestone is part of this goal:"
-      placeholder: "put the issue number here"
-    validations:
-      required: true
-
   - type: textarea
     attributes:
       label: Why
       description: Motivation for the milestone
       value: |
+        - Part of goal: 
         - 
     validations:
       required: true
