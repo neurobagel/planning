@@ -1,11 +1,16 @@
-# This workflow finds all PRs in all repos and adds them to the 
-# project if they have the right label
+# This workflow runs on a schedule
+# It finds all the PR owned by neurobagel
+# that have the _bot label applied.
+# It then checks if the PR has already been added to 
+# the main project and adds the PR if it hasn't been added yet.
+# Finally the workflow moves the PR to the "Community" column
+# on the project board.
 
 name: Scheduled PR automation
 on:
-  # schedule:
-  #   # * is a special character in YAML so you have to quote this string
-  #   - cron:  '30 5,17 * * *'
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '30 5,17 * * *'
   workflow_dispatch:
 
 jobs:
@@ -21,7 +26,7 @@ jobs:
           GH_TOKEN: ${{ secrets.LAB_PAT  }}
           MAX_REPO: 50
         run: |
-          pr_urls=$(gh search prs label:_bot --state open --json 'url' | jq -c '[.[].url]')
+          pr_urls=$(gh search prs --owner neurobagel label:_bot --state open --json 'url' | jq -c '[.[].url]')
           echo "pr_urls=${pr_urls}" >> $GITHUB_OUTPUT
 
   process_prs:
