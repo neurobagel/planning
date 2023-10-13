@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        url: ${{fromJSON(needs.get_pr.outputs.urls)}}
+        url: ${{fromJSON(needs.get_prs.outputs.urls)}}
 
     steps:
       
