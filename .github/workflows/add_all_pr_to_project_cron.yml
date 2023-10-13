@@ -27,6 +27,8 @@ jobs:
   process_prs:
     name: Process PR
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.NB_PROJECT_PAT }}
     needs: get_prs
     strategy:
       fail-fast: false
