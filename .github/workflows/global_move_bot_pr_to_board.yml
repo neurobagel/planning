@@ -33,6 +33,9 @@ jobs:
     name: Process PR
     runs-on: ubuntu-latest
     env:
+      # Note that all tasks in this job require a personal access token 
+      # with PROJECT permissions, see
+      # https://docs.github.com/en/rest/overview/permissions-required-for-fine-grained-personal-access-tokens?apiVersion=2022-11-28#organization-permissions-for-projects
       GH_TOKEN: ${{ secrets.NB_PROJECT_PAT }}
     needs: get_prs
     strategy:
@@ -53,6 +56,16 @@ jobs:
         run: |
           gh pr edit ${{ matrix.url }} --add-project Neurobagel
 
+        # Note that in contrast to the graphical github UI,
+        # once a PR (or other item) is added to a github project, 
+        # project related changes are no longer applied directly to the PR
+        # but instead to the project card that contains the PR.
+        # Once the PR is added to the project (and thus has a project card)
+        # we therefore have to search for the node id of the containing project card
+        # and then set the Status and Community option on the project card.
+        #
+        # This step expects to find the id of the (parent) project card
+        # and will fail (crashing the entire workflow) otherwise
       - name: Find project node id
         id: project_node
         run: | 
@@ -108,7 +121,14 @@ jobs:
               done
           )
           echo "parent_id=${parent_id}" >> $GITHUB_OUTPUT
-
+        # This step expects a custom field called "Status"
+        # with an option called "Community" to exist in the project.
+        # We need their IDs as input for our later call to the API
+        # to move our PR project card to the "Community" column.
+        # 
+        # We make them available to other steps in this job
+        # by writing them to the GITHUB_OUTPUT environment variable.
+        # see: https://docs.github.com/en/actions/using-jobs/defining-outputs-for-jobs
       - name: Get IDs for Status field and Community option
         id: get_id
         env:
