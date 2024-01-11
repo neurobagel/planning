@@ -100,7 +100,7 @@ jobs:
             echo -e "\nSyncing label ${{matrix.label}} to ${repo}!"
             
             # We escape grep's nonzero exit status here
-            out=$(gh label list -R "${repo}" -L 100 | grep -w "${{ matrix.label }}" || echo "")
+            out=$(gh label list -R "${repo}" -L 100 | cut -f 1 | grep -w "${{ matrix.label }}" || echo "")
             
             if [ -z "${out}" ]; then
               # Label missing
