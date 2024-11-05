@@ -43,10 +43,17 @@ jobs:
     outputs:
       concl_exist: ${{ steps.missing.outcome }}
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.NB_BOT_ID }}
+          private-key: ${{ secrets.NB_BOT_KEY }}
+
       - name: exit 1 if label does not exist
         id: missing
         env:
-          GH_TOKEN: ${{ secrets.LAB_PAT }}
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         # This step makes use of the fact that grep returns a non-zero exit code when no match is found
         # see https://www.gnu.org/software/grep/manual/html_node/Exit-Status.html
         # we use the exit code to encode whether the label exists (see above)
@@ -62,15 +69,25 @@ jobs:
     needs: [check_label]
     if: github.event.action == 'created'
     env:
-        GH_TOKEN: ${{ secrets.LAB_PAT }}
         LABEL_NAME: ${{ github.event.label.name }}
         LABEL_COLOR: ${{ github.event.label.color }}
         LABEL_DESCRIPTION: ${{ github.event.label.description }}
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.NB_BOT_ID }}
+          private-key: ${{ secrets.NB_BOT_KEY }}
+      
       - if: needs.check_label.outputs.concl_exist == 'success'
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           echo Cannot create label "${LABEL_NAME}" in "${{ inputs.repo }}" because it already exists
       - if: needs.check_label.outputs.concl_exist == 'failure'
+        env:
+            GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           echo Creating Label ${LABEL_NAME} in ${{ inputs.repo}}
           gh label create -R "${{ inputs.repo}}" "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
@@ -93,13 +110,21 @@ jobs:
     needs: [check_label]
     if: github.event.action == 'edited'
     env:
-        GH_TOKEN: ${{ secrets.LAB_PAT }}
         LABEL_NAME: ${{ github.event.label.name }}
         LABEL_COLOR: ${{ github.event.label.color }}
         LABEL_DESCRIPTION: ${{ github.event.label.description }}
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.NB_BOT_ID }}
+          private-key: ${{ secrets.NB_BOT_KEY }}
+
       - name: label exists
         if: needs.check_label.outputs.concl_exist == 'success'
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           echo Label exists
           echo rename: ${{ inputs.rename }}
@@ -117,6 +142,8 @@ jobs:
           fi
       - name: label does not exist
         if: needs.check_label.outputs.concl_exist == 'failure'
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           if [ ${{ inputs.rename }} == 'true' ];then
             # TODO: make sure the old label name exists, otherwise just create the label.

@@ -52,10 +52,17 @@ jobs:
     outputs:
       repos: ${{ steps.get_repo.outputs.repositories }}
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.NB_BOT_ID }}
+          private-key: ${{ secrets.NB_BOT_KEY }}
+
       - name: Get current repositories
         id: get_repo
         env:
-          GH_TOKEN: ${{ secrets.LAB_PAT  }}
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           MAX_REPO: 50
         run: |
           repo_list=$(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived -L ${MAX_REPO} --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"' | jq -cnR '[inputs | select(length>0)]')

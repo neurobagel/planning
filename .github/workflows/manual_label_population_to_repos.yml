@@ -41,9 +41,12 @@ jobs:
   sync_labels:
     name: Process all the labels
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+
     needs: get_labels
-    env:
-      GH_TOKEN: ${{ secrets.LAB_PAT }}
     strategy:
       # Note: we cannot make a matrix for the label AND repo at once,
       # because the total number of jobs will exceed the maximum allowed by GitHub.
@@ -52,7 +55,16 @@ jobs:
       matrix:
         label: ${{fromJSON(needs.get_labels.outputs.labels)}}
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.NB_BOT_ID }}
+          private-key: ${{ secrets.NB_BOT_KEY }}
+      
       - name: read label details
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         id: read_label
         run: |
             # TODO replace hardcoded owner and repo with variables. But note that GITHUB_REPOSITORY
@@ -93,7 +105,9 @@ jobs:
       - name: sync label
         env:
           MAX_REPO: 100
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
+          export GH_TOKEN="${{ steps.generate-token.outputs.token }}"
           for repo in $(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived -L ${MAX_REPO} --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"');
           do
           
