@@ -61,6 +61,7 @@ jobs:
         with:
           app-id: ${{ vars.NB_BOT_ID }}
           private-key: ${{ secrets.NB_BOT_KEY }}
+          owner: ${{ github.repository_owner }}
       
       - name: read label details
         env:
@@ -107,7 +108,6 @@ jobs:
           MAX_REPO: 100
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          export GH_TOKEN="${{ steps.generate-token.outputs.token }}"
           for repo in $(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived -L ${MAX_REPO} --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"');
           do
           
