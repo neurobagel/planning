@@ -41,10 +41,6 @@ jobs:
   sync_labels:
     name: Process all the labels
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      actions: write
 
     needs: get_labels
     strategy:
