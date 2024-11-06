@@ -57,11 +57,17 @@ jobs:
         with:
           app-id: ${{ vars.NB_BOT_ID }}
           private-key: ${{ secrets.NB_BOT_KEY }}
+          # Note: We need to explicitly set the owner field here because this workflow only lives in planning but also 
+          # makes changes in other repos.
+          # See https://github.com/marketplace/actions/create-github-app-token#create-a-token-for-multiple-repositories-in-the-current-owners-installation
+          # and https://github.com/orgs/community/discussions/69154#discussioncomment-7191057
           owner: ${{ github.repository_owner }}
+        
+        # To avoid setting the GH_TOKEN in every step, we set it as an environment variable
+      - name: Set GH_TOKEN
+        run: echo "GH_TOKEN=${{ steps.generate-token.outputs.token }}" >> $GITHUB_ENV
       
       - name: read label details
-        env:
-          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         id: read_label
         run: |
             # TODO replace hardcoded owner and repo with variables. But note that GITHUB_REPOSITORY
@@ -102,7 +108,6 @@ jobs:
       - name: sync label
         env:
           MAX_REPO: 100
-          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           for repo in $(gh repo list $GITHUB_REPOSITORY_OWNER --no-archived -L ${MAX_REPO} --json owner,name --jq '.[] | "\(.owner.login)/\(.name)"');
           do
