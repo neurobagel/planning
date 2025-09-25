@@ -163,10 +163,15 @@ jobs:
         if: needs.check_label.outputs.concl_exist == 'failure'
         run: |
           if [ ${{ inputs.rename }} == 'true' ];then
-            # TODO: make sure the old label name exists, otherwise just create the label.
             echo Label was renamed
-            echo Renaming "${{ github.event.changes.name.from }}" to "${LABEL_NAME}" in "${{ inputs.repo}}"
-            gh label edit -R "${{ inputs.repo}}" "${{ github.event.changes.name.from }}" --name "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+            # Check if the old label exists before attempting to rename
+            if gh label list -R "${{ inputs.repo }}" -L 100 --json 'name' | jq -r '.[].name' | grep -wq "^${{ github.event.changes.name.from }}$"; then
+              echo Old label "${{ github.event.changes.name.from }}" exists, renaming to "${LABEL_NAME}" in "${{ inputs.repo}}"
+              gh label edit -R "${{ inputs.repo}}" "${{ github.event.changes.name.from }}" --name "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+            else
+              echo Old label "${{ github.event.changes.name.from }}" does not exist, creating new label "${LABEL_NAME}" in "${{ inputs.repo}}"
+              gh label create -R "${{ inputs.repo}}" "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+            fi
           
           else
             echo Label was not renamed
