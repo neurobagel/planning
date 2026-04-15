@@ -36,9 +36,21 @@ body:
 
   - type: textarea
     attributes:
-      label: What
-      description: Concrete tasks needed to achieve the desired outcomes. Will become Epics.
+      label: Implementation checklist
+      description: List of 
       value: |
-        - [ ] 
+        - [ ] How will this change impact the network of deployed nodes. Will straggler nodes
+          - [ ] Immediately drop from the network / error out
+          - [ ] Continue with the previous functionality but miss new features
+          - [ ] cause query.neurobagel.org to be buggy / degraded unless all nodes update
+        - [ ] What is the upgrade procedure for nodes?
+        - [ ] How will these changes impact
+          - [ ] The data model
+          - [ ] The documentation
+          - [ ] CLI
+          - [ ] Inteface between query tool and federation API
+        
     validations:
-      required: true
+      required: false
+
+
