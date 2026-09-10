@@ -164,13 +164,20 @@ jobs:
         run: |
           if [ ${{ inputs.rename }} == 'true' ];then
             echo Label was renamed
-            # Check if the old label exists before attempting to rename
-            if gh label list -R "${{ inputs.repo }}" -L 100 --json 'name' | jq -r '.[].name' | grep -wq "^${{ github.event.changes.name.from }}$"; then
-              echo Old label "${{ github.event.changes.name.from }}" exists, renaming to "${LABEL_NAME}" in "${{ inputs.repo}}"
-              gh label edit -R "${{ inputs.repo}}" "${{ github.event.changes.name.from }}" --name "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
-            else
-              echo Label "${{ github.event.changes.name.from }}" does not exist  in "${{ inputs.repo}}", creating new label "${LABEL_NAME}"
+            OLD_LABEL_NAME="${{ github.event.changes.name.from }}"
+            OLD_LABEL_ENCODED=$(printf '%s' "${OLD_LABEL_NAME}" | jq -sRr @uri)
+            LOOKUP_ERROR=$(gh api -R "${{ inputs.repo }}" "repos/{owner}/{repo}/labels/${OLD_LABEL_ENCODED}" 2>&1 > /dev/null)
+            LOOKUP_STATUS=$?
+            if [ "${LOOKUP_STATUS}" -eq 0 ]; then
+              echo Old label "${OLD_LABEL_NAME}" exists, renaming to "${LABEL_NAME}" in "${{ inputs.repo}}"
+              gh label edit -R "${{ inputs.repo}}" "${OLD_LABEL_NAME}" --name "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+            elif echo "${LOOKUP_ERROR}" | grep -Fq 'HTTP 404'; then
+              echo Label "${OLD_LABEL_NAME}" does not exist  in "${{ inputs.repo}}", creating new label "${LABEL_NAME}"
               gh label create -R "${{ inputs.repo}}" "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
+            else
+              echo "Failed to look up old label \"${OLD_LABEL_NAME}\" in \"${{ inputs.repo}}\""
+              echo "${LOOKUP_ERROR}"
+              exit 1
             fi
           
           else
