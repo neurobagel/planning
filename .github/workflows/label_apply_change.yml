@@ -169,7 +169,7 @@ jobs:
               echo Old label "${{ github.event.changes.name.from }}" exists, renaming to "${LABEL_NAME}" in "${{ inputs.repo}}"
               gh label edit -R "${{ inputs.repo}}" "${{ github.event.changes.name.from }}" --name "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
             else
-              echo Old label "${{ github.event.changes.name.from }}" does not exist, creating new label "${LABEL_NAME}" in "${{ inputs.repo}}"
+              echo Label "${{ github.event.changes.name.from }}" does not exist  in "${{ inputs.repo}}", creating new label "${LABEL_NAME}"
               gh label create -R "${{ inputs.repo}}" "${LABEL_NAME}" --color "${LABEL_COLOR}" --description "${LABEL_DESCRIPTION}"
             fi
           
